@@ -1,0 +1,62 @@
+name: Sync GitCode → GitHub
+
+# 周期性将 GitCode cann/hcomm 和 cann/hccl 镜像同步到 GitHub cann-hccl 组织下。
+#
+# 所需的 Repository Secrets:
+#   GITCODE_BOT_TOKEN — GitCode 访问令牌
+#   HCCL_BOT_TOKEN    — GitHub PAT（repo scope，需对 cann-hccl 组织有创建仓库 + 推送权限）
+
+on:
+  schedule:
+    # 每小时整点执行一次
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — 仅打印操作，不实际推送'
+        required: false
+        default: 'false'
+
+# 同一时刻只允许一轮同步，避免镜像推送冲突
+concurrency:
+  group: sync-gitcode-to-github
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync repos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - src_repo: 'cann/hcomm'
+            dst_repo: 'cann-hccl/hcomm'
+          - src_repo: 'cann/hccl'
+            dst_repo: 'cann-hccl/hccl'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Sync ${{ matrix.src_repo }} to ${{ matrix.dst_repo }}
+        id: sync
+        uses: shink/repo-sync-gh-action@v1
+        with:
+          src_platform: gitcode.com
+          src_repo: ${{ matrix.src_repo }}
+          src_token: ${{ secrets.GITCODE_BOT_TOKEN }}
+          dst_platform: github.com
+          dst_repo: ${{ matrix.dst_repo }}
+          dst_token: ${{ secrets.HCCL_BOT_TOKEN }}
+          dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+
+      - name: Display sync results
+        if: always()
+        run: |
+          echo "::group::Sync Results"
+          echo "Source:  gitcode.com/${{ matrix.src_repo }}"
+          echo "Target:  github.com/${{ matrix.dst_repo }}"
+          echo "Status:  ${{ steps.sync.outputs.sync_status }}"
+          echo "::endgroup::"
