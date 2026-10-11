@@ -1,4 +1,4 @@
-name: Sync GitCode → GitHub
+name: Sync GitCode To GitHub
 
 # 周期性将 GitCode cann/hcomm 和 cann/hccl 镜像同步到 GitHub cann-hccl 组织下。
 #
@@ -42,7 +42,7 @@ jobs:
 
       - name: Sync ${{ matrix.src_repo }} to ${{ matrix.dst_repo }}
         id: sync
-        uses: shink/repo-sync-gh-action@v1
+        uses: shink/repo-sync-gh-action@v2
         with:
           src_platform: gitcode.com
           src_repo: ${{ matrix.src_repo }}
@@ -51,6 +51,7 @@ jobs:
           dst_repo: ${{ matrix.dst_repo }}
           dst_token: ${{ secrets.HCCL_BOT_TOKEN }}
           dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+          lfs: true
 
       - name: Display sync results
         if: always()
